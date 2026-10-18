@@ -1,6 +1,7 @@
-import React from "react";  
 
 import "./App.css";
+
+import Header from "./components/Header";
 
 import HorizontalStepper from "./components/HorizontalStepper";
 
@@ -9,6 +10,7 @@ function App() {
     <>
     <HorizontalStepper currentStep={1} />
     <HorizontalStepper currentStep={2} />
+    <Header/>
     </>
   );
 }
