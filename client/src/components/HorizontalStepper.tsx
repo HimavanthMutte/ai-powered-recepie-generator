@@ -31,7 +31,6 @@ const HorizontalStepper: React.FC<HorizontalStepperProps> = ({
           aria-current={isActive ? "step" : undefined}
           className={`flex items-center justify-center gap-2
             whitespace-nowrap rounded-full px-3 sm:px-4 py-5
-            text-sm sm:text-base
             ${
               isActive
                 ? "bg-primary text-white shadow-md"
@@ -41,12 +40,12 @@ const HorizontalStepper: React.FC<HorizontalStepperProps> = ({
           {isActive ? (
             <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-200" />
           ) : (
-            <span className="font-mono text-gray-500">
+            <span className="font-mono text-sm sm:text-xl text-gray-500">
               0{step.id}
             </span>
           )}
 
-          <span>{step.label}</span>
+          <span className="text-xl sm:text-2xl">{step.label}</span>
         </div>
 
         {index < steps.length - 1 && (

@@ -1,73 +1,78 @@
-import {type JSX} from "react";
+
+import { type JSX } from "react";
 
 const Header = (): JSX.Element => {
   return (
     <header className="sticky top-0 z-40 border-b border-[#E7E8E1] bg-[#FAF9F5]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-[76px] max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex h-[80px] max-w-6xl items-center justify-between px-6">
 
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <a href="#" className="group flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
-              <span className="material-symbols-outlined text-[23px]">
+          <a href="" className="group flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <span className="material-symbols-outlined text-[25px]">
                 restaurant
               </span>
             </div>
 
-            <span className="font-serif text-2xl font-semibold tracking-tight text-[#243B2B]">
+            <span className="font-serif text-3xl font-semibold tracking-tight text-[#243B2B]">
               CookCraft AI
             </span>
           </a>
-
-          <span className="hidden rounded-md border border-[#DCE8DC] bg-primary px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white sm:inline-flex">
-            VISION STUDIO
-          </span>
         </div>
 
         {/* Navigation */}
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center gap-2 md:flex"
+        >
+          {/* Active Navigation Item */}
           <a
             href="#"
             aria-current="page"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors"
+            className="inline-flex items-center gap-2.5 rounded-lg bg-primary px-5 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-[#478B59]"
           >
-            <span className="material-symbols-outlined text-[19px]">
+            <span className="material-symbols-outlined text-[22px]">
               photo_camera
             </span>
-            Scan &amp; Create
+            <span>Scan &amp; Create</span>
           </a>
 
+          {/* Saved Recipes */}
           <a
             href="#"
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-[#667368] transition-colors hover:bg-primary/90 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-base font-medium text-[#526456] transition-colors hover:bg-[#EAF1E8] hover:text-[#294C32]"
           >
-            <span className="material-symbols-outlined text-[19px]">
+            <span className="material-symbols-outlined text-[22px]">
               bookmark
             </span>
-            Saved Recipes
-            <span className="rounded-md bg-[#E9EDE5] px-1.5 py-0.5 text-xs font-semibold text-[#45664B]">
+
+            <span>Saved Recipes</span>
+
+            <span className="rounded-md bg-[#E9EDE5] px-2 py-0.5 text-sm font-semibold text-[#45664B]">
               14
             </span>
           </a>
 
+          {/* Pantry */}
           <a
             href="#"
-            className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-[#667368] transition-colors hover:bg-primary/90 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-3 text-base font-medium text-[#526456] transition-colors hover:bg-[#EAF1E8] hover:text-[#294C32]"
           >
-            <span className="material-symbols-outlined text-[19px]">
+            <span className="material-symbols-outlined text-[22px]">
               kitchen
             </span>
-            Pantry
+            <span>Pantry</span>
           </a>
         </nav>
 
-        {/* Profile */}
+        {/* User Profile */}
         <button
           type="button"
           aria-label="User profile"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E0E5DC] bg-white text-[#45664B] shadow-sm transition-colors hover:border-[#56A068] hover:bg-[#EEF5EC]"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E0E5DC] bg-white text-[#45664B] shadow-sm transition-colors hover:border-primary hover:bg-[#EEF5EC]"
         >
-          <span className="material-symbols-outlined text-[21px]">
+          <span className="material-symbols-outlined text-[24px]">
             person
           </span>
         </button>
