@@ -1,20 +1,23 @@
-import mongoose from "mongoose"
+import mongoose from "mongoose";
 
-const recepieSchema = new mongoose.Schema({
+const recepieSchema = new mongoose.Schema(
+  {
     title: {
-        type: String,
-        required: true,
-        trim: true,
+      type: String,
+      required: true,
+      trim: true,
     },
-    ingredients: [{
+    ingredients: [
+      {
         name: {
-            type: String,
-            require: true
+          type: String,
+          require: true,
         },
         quantity: {
-            type: String
-        }
-    }],
+          type: String,
+        },
+      },
+    ],
     nutrition: {
       calories: { type: String },
       protein: { type: String },
@@ -22,9 +25,9 @@ const recepieSchema = new mongoose.Schema({
       fat: { type: String },
       fiber: { type: String },
     },
-    servings:  { type: String, required: true },
-    prepTime:  { type: String },
-    cookTime:  { type: String },
+    servings: { type: String, required: true },
+    prepTime: { type: String },
+    cookTime: { type: String },
     difficulty: {
       type: String,
       enum: ["Easy", "Medium", "Hard"],
@@ -32,7 +35,8 @@ const recepieSchema = new mongoose.Schema({
     },
     imageUrl: { type: String },
     detectedIngredients: [String],
-    
-},{timestamps: true})
+  },
+  { timestamps: true },
+);
 
-export default mongoose.model("Recepie",recepieSchema)
+export default mongoose.model("Recepie", recepieSchema);
