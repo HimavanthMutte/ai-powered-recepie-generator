@@ -4,6 +4,8 @@ import upload from "./middleware/upload.js";
 
 import recipeRouter from "./routes/recipeRoutes.js";
 
+import type { Request, Response, NextFunction } from "express";
+
 await connectDB();
 
 const app = express();
@@ -23,6 +25,11 @@ app.post("/test-upload", upload.single("file"), (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
   res.json({ message: "File uploaded successfully", file: req.file });
+});
+
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: err.message || "Something went wrong!" });
 });
 
 app.listen(PORT, () => {

@@ -1,12 +1,13 @@
 import { type RecipeType } from "../types/recipe.js";
 
-import { type Request, type Response } from "express";
+import { type Request, type Response, type NextFunction } from "express";
 
 import Recipe from "../models/Recipe.js";
 
 export const saveRecipe = async (
   req: Request<{}, {}, RecipeType>,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const newRecipe = new Recipe(req.body);
@@ -15,7 +16,7 @@ export const saveRecipe = async (
   } catch (err) {
     if (err instanceof Error) {
       console.error("Save recipe error:", err.message);
-      res.status(500).json({ error: "Failed to save recipe" });
+      next(err);
     }
   }
 };
@@ -25,7 +26,11 @@ interface filterObject {
   search?: string;
 }
 
-export const getSavedRecipes = async (req: Request, res: Response) => {
+export const getSavedRecipes = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { difficulty = "", search = "" } = req.body;
     const filters: filterObject = {};
@@ -35,13 +40,16 @@ export const getSavedRecipes = async (req: Request, res: Response) => {
     res.status(200).json(recipes);
   } catch (err) {
     if (err instanceof Error) {
-      console.error("Get recipes error:", err.message);
-      res.status(500).json({ error: "Failed to fetch recipes" });
+      next(err);
     }
   }
 };
 
-export const getRecipeById = async (req: Request, res: Response) => {
+export const getRecipeById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const recipe = await Recipe.findById(req.params.id);
     if (!recipe) {
@@ -49,12 +57,15 @@ export const getRecipeById = async (req: Request, res: Response) => {
     }
     res.json(recipe);
   } catch (error) {
-    console.error("Get recipe error:", error);
-    res.status(500).json({ error: "Failed to fetch recipe" });
+    next(error);
   }
 };
 
-export const deleteRecipe = async (req: Request, res: Response) => {
+export const deleteRecipe = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const recipe = await Recipe.findByIdAndDelete(req.params.id);
     if (!recipe) {
@@ -62,7 +73,6 @@ export const deleteRecipe = async (req: Request, res: Response) => {
     }
     res.json({ message: "Recipe deleted successfully" });
   } catch (error) {
-    console.error("Delete recipe error:", error);
-    res.status(500).json({ error: "Failed to delete recipe" });
+    next(error);
   }
 };
