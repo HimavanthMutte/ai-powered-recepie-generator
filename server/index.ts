@@ -14,6 +14,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use("/recipes", recipeRouter);
 
+app.get("/api/health", (req, res) => {
+  res.json({ status: "Server is running", timestamp: new Date() });
+});
+
 app.post("/test-upload", upload.single("file"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
