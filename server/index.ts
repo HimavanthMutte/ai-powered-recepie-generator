@@ -2,11 +2,17 @@ import express from "express";
 import connectDB from "./config/db.js";
 import upload from "./middleware/upload.js";
 
+import recipeRouter from "./routes/recipeRoutes.js";
+
 await connectDB();
 
 const app = express();
 
+app.use(express.json());
+
 const PORT = process.env.PORT || 3000;
+
+app.use("/recipes", recipeRouter);
 
 app.post("/test-upload", upload.single("file"), (req, res) => {
   if (!req.file) {
