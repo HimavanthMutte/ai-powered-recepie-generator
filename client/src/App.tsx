@@ -1,16 +1,11 @@
 
-import "./App.css";
-
-import Header from "./components/Header";
-
-import HorizontalStepper from "./components/HorizontalStepper";
-
+import HomePage from "./pages/HomePage";
+import GenerateSuggestions from "./pages/GenerateSuggestions";
 function App() {
   return (
     <>
-    <HorizontalStepper currentStep={1} />
-    <HorizontalStepper currentStep={2} />
-    <Header/>
+      <HomePage />
+      <GenerateSuggestions />
     </>
   );
 }
