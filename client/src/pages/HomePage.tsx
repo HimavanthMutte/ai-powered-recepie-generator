@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import Header from "../components/Header";
-import WorkflowStepper from "../components/WorkflowStepper";
-import HeroSection from "../components/HeroSection";
-import UploadDropzone from "../components/UploadDropzone";
-import SampleKitchenSection from "../components/SampleKitchenSection";
-import TipsSection from "../components/TipsSection";
-import ProcessingOverlay from "../components/ProcessingOverlay";
+import WorkflowStepper from "../components/home/WorkflowStepper";
+import HeroSection from "../components/home/HeroSection";
+import UploadDropzone from "../components/home/UploadDropzone";
+import SampleKitchenSection from "../components/home/SampleKitchenSection";
+import TipsSection from "../components/home/TipsSection";
+import ProcessingOverlay from "../components/home/ProcessingOverlay";
 import type { SampleKitchen, ScanStatus } from "../components/types";
 
 const scanStages = [
@@ -52,13 +52,17 @@ export default function HomePage(): JSX.Element {
         completionRef.current = setTimeout(() => {
           setIsScanning(false);
           setScanComplete(true);
-          window.alert("Vision scan complete! 7 ingredients identified. Ready for Step 2: Review Ingredients.");
+          window.alert(
+            "Vision scan complete! 7 ingredients identified. Ready for Step 2: Review Ingredients.",
+          );
         }, 500);
         return;
       }
 
       setScanStatus((current) =>
-        current ? { ...current, progress: stage.progress, message: stage.message } : current,
+        current
+          ? { ...current, progress: stage.progress, message: stage.message }
+          : current,
       );
       stageIndexRef.current += 1;
 
@@ -68,7 +72,9 @@ export default function HomePage(): JSX.Element {
         completionRef.current = setTimeout(() => {
           setIsScanning(false);
           setScanComplete(true);
-          window.alert("Vision scan complete! 7 ingredients identified. Ready for Step 2: Review Ingredients.");
+          window.alert(
+            "Vision scan complete! 7 ingredients identified. Ready for Step 2: Review Ingredients.",
+          );
         }, 500);
       }
     }, 500);
@@ -95,12 +101,19 @@ export default function HomePage(): JSX.Element {
         <SampleKitchenSection onSelectSample={handleSampleSelect} />
         <TipsSection />
         {scanComplete && (
-          <p role="status" className="mt-6 rounded-xl border border-[#CFE3D1] bg-[#EAF5EE] p-4 text-sm font-medium text-[#285C36]">
+          <p
+            role="status"
+            className="mt-6 rounded-xl border border-[#CFE3D1] bg-[#EAF5EE] p-4 text-sm font-medium text-[#285C36]"
+          >
             Demo scan complete. The next step would be ingredient review.
           </p>
         )}
       </main>
-      <ProcessingOverlay isOpen={isScanning} status={scanStatus} onCancel={cancelScan} />
+      <ProcessingOverlay
+        isOpen={isScanning}
+        status={scanStatus}
+        onCancel={cancelScan}
+      />
     </div>
   );
 }

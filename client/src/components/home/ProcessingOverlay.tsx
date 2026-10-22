@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import type { ScanStatus } from "./types";
+import type { ScanStatus } from "../types";
 
 type ProcessingOverlayProps = {
   isOpen: boolean;
@@ -26,7 +26,9 @@ export default function ProcessingOverlay({
         <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full border-2 border-[#56A068]/20" />
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF5EE] text-[#367D49] shadow-sm">
-            <span className="material-symbols-outlined animate-pulse text-3xl">document_scanner</span>
+            <span className="material-symbols-outlined animate-pulse text-3xl">
+              document_scanner
+            </span>
           </div>
         </div>
 
@@ -34,11 +36,15 @@ export default function ProcessingOverlay({
           <span className="h-2 w-2 animate-pulse rounded-full bg-[#56A068]" />
           CookCraft Vision AI
         </div>
-        <h2 id="scan-dialog-title" className="mb-2 font-serif text-2xl font-medium text-[#191C1A]">
+        <h2
+          id="scan-dialog-title"
+          className="mb-2 font-serif text-2xl font-medium text-[#191C1A]"
+        >
           Analyzing Kitchen Haul
         </h2>
         <p className="mb-6 text-sm leading-relaxed text-[#5C645D]">
-          Detecting pantry items, identifying fresh produce, and filtering out utensils and cookware…
+          Detecting pantry items, identifying fresh produce, and filtering out
+          utensils and cookware…
         </p>
 
         <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-[#F4F1EA]">
@@ -49,9 +55,14 @@ export default function ProcessingOverlay({
         </div>
         <div className="mb-6 flex w-full justify-between gap-4 text-left font-mono text-xs text-[#5C645D]">
           <span>{status.message}</span>
-          <span className="shrink-0 font-semibold text-[#367D49]">{status.progress}%</span>
+          <span className="shrink-0 font-semibold text-[#367D49]">
+            {status.progress}%
+          </span>
         </div>
-        <p className="mb-4 max-w-full truncate text-xs text-[#8A918A]" title={status.sourceName}>
+        <p
+          className="mb-4 max-w-full truncate text-xs text-[#8A918A]"
+          title={status.sourceName}
+        >
           Source: {status.sourceName}
         </p>
         <button
