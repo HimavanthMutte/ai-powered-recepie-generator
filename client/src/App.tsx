@@ -1,122 +1,81 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import type { ReactNode } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useRecipe } from "./context/RecipeContext";
+import HomePage from "./pages/HomePage";
+import Review from "./pages/Review";
+import GenerateSuggestions from "./pages/GenerateSuggestions";
+import RecipeResult from "./pages/RecipeResult";
+import SavedRecipes from "./pages/SavedRecipes";
+import RecipeDetail from "./pages/RecipeDetail";
 
-function App() {
-  const [count, setCount] = useState(0)
+// Route guard: Users cannot visit ANY route except Home ('/') unless an image is uploaded
+function RequireImage({ children }: { children: ReactNode }) {
+  const { photoUrl } = useRecipe();
+  const location = useLocation();
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  if (!photoUrl) {
+    return (
+      <Navigate
+        to="/"
+        replace
+        state={{
+          notice: "Please upload or choose a kitchen photo first to proceed.",
+          from: location.pathname,
+        }}
+      />
+    );
+  }
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  return <>{children}</>;
 }
 
-export default App
+export default function App() {
+  return (
+    <div className="min-h-screen bg-[#FAF9F5] text-[#191C1A]">
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/review"
+          element={
+            <RequireImage>
+              <Review />
+            </RequireImage>
+          }
+        />
+        <Route
+          path="/suggestions"
+          element={
+            <RequireImage>
+              <GenerateSuggestions />
+            </RequireImage>
+          }
+        />
+        <Route
+          path="/recipe"
+          element={
+            <RequireImage>
+              <RecipeResult />
+            </RequireImage>
+          }
+        />
+        <Route
+          path="/saved"
+          element={
+            <RequireImage>
+              <SavedRecipes />
+            </RequireImage>
+          }
+        />
+        <Route
+          path="/saved/:id"
+          element={
+            <RequireImage>
+              <RecipeDetail />
+            </RequireImage>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  );
+}

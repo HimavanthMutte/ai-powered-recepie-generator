@@ -1,37 +1,54 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
+import cors from "cors";
 import connectDB from "./config/db.js";
-import upload from "./middleware/upload.js";
-
 import recipeRouter from "./routes/recipeRoutes.js";
-
 import type { Request, Response, NextFunction } from "express";
 
-await connectDB();
-
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
+// Enable CORS for all local dev origins
+app.use(cors());
 
-const PORT = process.env.PORT || 3000;
+// Body parser
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
-app.use("/recipes", recipeRouter);
+// Connect to MongoDB
+connectDB();
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "Server is running", timestamp: new Date() });
+// API Routes
+app.use("/api/recipes", recipeRouter);
+app.use("/recipes", recipeRouter); // backwards compatibility
+
+// Health check endpoint
+app.get("/api/health", (req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    service: "CookCraft AI Recipe Generator API",
+    timestamp: new Date().toISOString(),
+  });
 });
 
-app.post("/test-upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  res.json({ message: "File uploaded successfully", file: req.file });
+// Root ping
+app.get("/", (req: Request, res: Response) => {
+  res.json({
+    status: "online",
+    message: "CookCraft AI Recipe Generator API Server is running.",
+  });
 });
 
+// Global error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
+  console.error("Unhandled error:", err.stack || err.message);
   res.status(500).json({ error: err.message || "Something went wrong!" });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server started running on ${process.env.PORT}`);
+  console.log(`Server started running on port ${PORT}`);
 });
+
+export default app;
