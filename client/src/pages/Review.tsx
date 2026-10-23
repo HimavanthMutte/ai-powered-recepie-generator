@@ -15,7 +15,6 @@ export default function Review(): JSX.Element {
     ingredientItems,
     ingredients,
     photoUrl,
-    setPhotoUrl,
     dietaryPreference,
     setDietaryPreference,
     generateRecipe,
