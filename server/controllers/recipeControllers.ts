@@ -33,11 +33,9 @@ export const analyzeImage = async (
 
     if (hasGroqKey()) {
       try {
-        // Try LLaMA 4 Scout or fallback vision model on Groq
+        // Use active Groq multimodal vision model
         const visionModels = [
-          "meta-llama/llama-4-scout-17b-16e-instruct",
-          "llama-3.2-11b-vision-preview",
-          "llama-3.2-90b-vision-preview",
+          "qwen/qwen3.8-27b",
         ];
 
         let completionText = "";
@@ -60,16 +58,17 @@ export const analyzeImage = async (
                 },
               ],
               model: model,
-              max_tokens: 500,
+              max_tokens: 600,
               temperature: 0.2,
             });
 
             completionText =
               chatCompletion.choices[0]?.message?.content?.trim() || "";
             if (completionText) break;
-          } catch (modelErr) {
+          } catch (modelErr: any) {
             console.warn(
-              `Model ${model} not available on Groq, trying next vision model...`,
+              `Model ${model} error on Groq:`,
+              modelErr?.message || modelErr,
             );
           }
         }
@@ -195,14 +194,25 @@ You must return ONLY a single valid JSON object (no markdown fences, no explanat
 Difficulty must be one of: "Easy", "Medium", "Hard".
 Return ONLY valid JSON.`;
 
-        const chatCompletion = await groq.chat.completions.create({
-          messages: [{ role: "user", content: prompt }],
-          model: "llama-3.3-70b-versatile",
-          temperature: 0.3,
-          max_tokens: 1500,
-        });
+        const textModels = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
+        let text = "";
 
-        const text = chatCompletion.choices[0]?.message?.content?.trim() || "";
+        for (const model of textModels) {
+          try {
+            const chatCompletion = await groq.chat.completions.create({
+              messages: [{ role: "user", content: prompt }],
+              model: model,
+              temperature: 0.3,
+              max_tokens: 1500,
+              response_format: { type: "json_object" },
+            });
+            text = chatCompletion.choices[0]?.message?.content?.trim() || "";
+            if (text) break;
+          } catch (modelErr: any) {
+            console.warn(`Text model ${model} failed, trying next...`, modelErr?.message);
+          }
+        }
+
         const jsonMatch = text.match(/\{[\s\S]*\}/);
 
         if (jsonMatch) {
@@ -211,7 +221,7 @@ Return ONLY valid JSON.`;
           return res.status(200).json(recipeData);
         }
       } catch (aiErr) {
-        console.error("Groq LLaMA text generation error:", aiErr);
+        console.error("Groq text generation error:", aiErr);
       }
     }
 
@@ -326,19 +336,33 @@ Return ONLY a valid JSON array containing exactly 3 objects with this structure:
 Difficulty must be "Easy", "Medium", or "Hard".
 Return ONLY the JSON array, no markdown fences.`;
 
-        const chatCompletion = await groq.chat.completions.create({
-          messages: [{ role: "user", content: prompt }],
-          model: "llama-3.3-70b-versatile",
-          temperature: 0.4,
-          max_tokens: 800,
-        });
+        const textModels = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
+        let text = "";
 
-        const text = chatCompletion.choices[0]?.message?.content?.trim() || "";
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        for (const model of textModels) {
+          try {
+            const chatCompletion = await groq.chat.completions.create({
+              messages: [{ role: "user", content: prompt }],
+              model: model,
+              temperature: 0.4,
+              max_tokens: 1200,
+              response_format: { type: "json_object" },
+            });
+            text = chatCompletion.choices[0]?.message?.content?.trim() || "";
+            if (text) break;
+          } catch (modelErr: any) {
+            console.warn(`Suggestions model ${model} failed, trying next...`, modelErr?.message);
+          }
+        }
+
+        const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
 
         if (jsonMatch) {
-          const suggestions = JSON.parse(jsonMatch[0]);
-          return res.status(200).json({ suggestions });
+          const parsed = JSON.parse(jsonMatch[0]);
+          const suggestions = Array.isArray(parsed) ? parsed : parsed.suggestions || [];
+          if (suggestions.length > 0) {
+            return res.status(200).json({ suggestions });
+          }
         }
       } catch (aiErr) {
         console.error("Groq suggestions error:", aiErr);

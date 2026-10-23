@@ -10,8 +10,6 @@ export default function Header(): JSX.Element {
     location.pathname === "/" || location.pathname === "/review";
   const isSavedActive =
     location.pathname === "/saved" || location.pathname.startsWith("/saved/");
-  const isSuggestionsActive =
-    location.pathname === "/suggestions" || location.pathname === "/recipe";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#E7E8E1] bg-[#FAF9F5]/95 backdrop-blur-md">
@@ -49,19 +47,6 @@ export default function Header(): JSX.Element {
             Scan &amp; Create
           </Link>
 
-          <Link
-            to="/suggestions"
-            className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-base font-medium transition-colors ${
-              isSuggestionsActive
-                ? "bg-[#EAF1E8] font-semibold text-[#294C32]"
-                : "text-[#526456] hover:bg-[#EAF1E8] hover:text-[#294C32]"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[22px]">
-              auto_awesome
-            </span>
-            Suggestions
-          </Link>
 
           <Link
             to="/saved"

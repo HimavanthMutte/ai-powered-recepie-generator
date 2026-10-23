@@ -8,24 +8,39 @@ import {
 } from "react";
 import axios from "axios";
 import type { Recipe, Suggestion } from "../types/recipe";
-import { recipes as initialRecipes } from "../data/recipes";
+
+export interface IngredientItem {
+  id: string;
+  name: string;
+  origin: "scan" | "user";
+  amount?: string;
+  category?: string;
+  icon?: string;
+}
 
 interface RecipeContextType {
   ingredients: string[];
+  ingredientItems: IngredientItem[];
   photoUrl: string | null;
   dietaryPreference: string;
   recipe: Recipe | null;
   suggestions: Suggestion[];
   savedRecipes: Recipe[];
   loading: boolean;
+  isAnalyzing: boolean;
   loadingMessage: string;
   error: string | null;
   setError: (err: string | null) => void;
   setIngredients: React.Dispatch<React.SetStateAction<string[]>>;
+  setIngredientItems: React.Dispatch<React.SetStateAction<IngredientItem[]>>;
   setPhotoUrl: (url: string | null) => void;
   setDietaryPreference: (diet: string) => void;
   setRecipe: (recipe: Recipe | null) => void;
   analyzeImage: (file: File | Blob, label?: string) => Promise<string[]>;
+  addIngredientItem: (name: string) => { success: boolean; message: string };
+  removeIngredientItem: (id: string) => void;
+  resetIngredientItems: () => void;
+  clearIngredientItems: () => void;
   generateRecipe: (
     ingredientsOverride?: string[],
     dietOverride?: string,
@@ -54,6 +69,147 @@ export const useRecipe = (): RecipeContextType => {
   }
   return context;
 };
+
+// Helper to categorize ingredients and assign pleasant visual metadata
+export function inferIngredientDetails(
+  name: string,
+  origin: "scan" | "user",
+): IngredientItem {
+  const lower = name.toLowerCase();
+  let category = "Fresh Produce";
+  let icon = "leaf";
+  const amount = origin === "scan" ? "Detected from scan" : "Added by you";
+
+  if (lower.includes("egg")) {
+    category = "Protein";
+    icon = "egg";
+  } else if (
+    lower.includes("tomato") ||
+    lower.includes("pepper") ||
+    lower.includes("chili") ||
+    lower.includes("zucchini") ||
+    lower.includes("carrot") ||
+    lower.includes("radicchio")
+  ) {
+    category = "Produce";
+    icon = "tomato";
+  } else if (
+    lower.includes("spinach") ||
+    lower.includes("basil") ||
+    lower.includes("herb") ||
+    lower.includes("parsley") ||
+    lower.includes("lettuce") ||
+    lower.includes("cilantro")
+  ) {
+    category = "Greens & Herbs";
+    icon = "leaf";
+  } else if (
+    lower.includes("cheese") ||
+    lower.includes("parmigiano") ||
+    lower.includes("milk") ||
+    lower.includes("butter") ||
+    lower.includes("yogurt")
+  ) {
+    category = "Dairy";
+    icon = "cheese";
+  } else if (
+    lower.includes("oil") ||
+    lower.includes("olive") ||
+    lower.includes("vinegar") ||
+    lower.includes("sauce")
+  ) {
+    category = "Fats & Oils";
+    icon = "droplet";
+  } else if (
+    lower.includes("garlic") ||
+    lower.includes("onion") ||
+    lower.includes("shallot") ||
+    lower.includes("ginger")
+  ) {
+    category = "Aromatics";
+    icon = "grip";
+  } else if (
+    lower.includes("beef") ||
+    lower.includes("chicken") ||
+    lower.includes("pork") ||
+    lower.includes("meat") ||
+    lower.includes("fish") ||
+    lower.includes("ham")
+  ) {
+    category = "Protein";
+    icon = "egg";
+  } else if (
+    lower.includes("pasta") ||
+    lower.includes("rice") ||
+    lower.includes("bean") ||
+    lower.includes("bread") ||
+    lower.includes("flour") ||
+    lower.includes("nut") ||
+    lower.includes("chickpea")
+  ) {
+    category = "Pantry Staples";
+    icon = "sprout";
+  }
+
+  return {
+    id: `ing-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    name: name.trim(),
+    origin,
+    amount,
+    category,
+    icon,
+  };
+}
+
+// Helper to scale down oversized photos before uploading to Groq
+async function prepareImageForVision(file: File | Blob): Promise<Blob> {
+  if (typeof window !== "undefined" && typeof document !== "undefined") {
+    try {
+      return await new Promise<Blob>((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const maxDim = 1200;
+          let { width, height } = img;
+          if (
+            width <= maxDim &&
+            height <= maxDim &&
+            file.size < 1.5 * 1024 * 1024
+          ) {
+            return resolve(file);
+          }
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return resolve(file);
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.85);
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(file);
+        };
+        img.src = url;
+      });
+    } catch {
+      return file;
+    }
+  }
+  return file;
+}
 
 // Helper to normalize recipe object coming from backend AI
 function normalizeRecipe(raw: any): Recipe {
@@ -87,16 +243,21 @@ function normalizeRecipe(raw: any): Recipe {
         ? raw.dietaryTags
         : ["Custom Creation", "Fresh Kitchen"];
 
-  // Normalize nutrition
   const rawNutrition = raw.nutrition || {};
   const calVal =
     typeof rawNutrition.calories === "number"
       ? rawNutrition.calories
-      : parseInt(String(rawNutrition.calories || "380").replace(/[^\d]/g, ""), 10) || 380;
+      : parseInt(
+          String(rawNutrition.calories || "380").replace(/[^\d]/g, ""),
+          10,
+        ) || 380;
 
   return {
     _id: raw._id,
-    id: raw._id || raw.id || `rec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    id:
+      raw._id ||
+      raw.id ||
+      `rec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
     title: raw.title || "Chef's Artisanal Recipe",
     shortTitle: raw.shortTitle || raw.title?.split(" ").slice(0, 4).join(" "),
     description:
@@ -109,11 +270,13 @@ function normalizeRecipe(raw: any): Recipe {
     prepMinutes:
       typeof raw.prepMinutes === "number"
         ? raw.prepMinutes
-        : parseInt(String(raw.prepTime || "10").replace(/[^\d]/g, ""), 10) || 10,
+        : parseInt(String(raw.prepTime || "10").replace(/[^\d]/g, ""), 10) ||
+          10,
     cookMinutes:
       typeof raw.cookMinutes === "number"
         ? raw.cookMinutes
-        : parseInt(String(raw.cookTime || "15").replace(/[^\d]/g, ""), 10) || 15,
+        : parseInt(String(raw.cookTime || "15").replace(/[^\d]/g, ""), 10) ||
+          15,
     prepTime: raw.prepTime || "10 mins",
     cookTime: raw.cookTime || "15 mins",
     difficulty: raw.difficulty || "Easy",
@@ -136,32 +299,36 @@ function normalizeRecipe(raw: any): Recipe {
 }
 
 export function RecipeProvider({ children }: { children: ReactNode }) {
-  const [ingredients, setIngredients] = useState<string[]>([
-    "Cherry Tomatoes",
-    "Fresh Basil",
-    "Garlic Cloves",
-    "Extra Virgin Olive Oil",
-    "Baby Spinach",
-    "Parmigiano Reggiano",
-    "Organic Eggs",
-  ]);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuBjRA98lnBAVGIMMliJCGxeAbiQsRm8wBGDA1Q8zk5KIW70RLrzQtemrqhIryMt0k61bBoGkjJuu_UviYBCXoCqZF_QYwBMRDMX9tdRK1abU8kdqE9LEqelnxMBxAlOi-IYt3suiBIua_urllLAPC4MfQHrUgFZJ2S6DHCltdIsoQcKVIsn3cm8K1hz55rkDDkMr0jNKwsXS3wP3RjKE-1tXrOtL8GZWgkOTfslGUTXbXKtvr9GoAQtwg",
+  // Start with clean states - NO stale data by default!
+  const [ingredients, setIngredients] = useState<string[]>([]);
+  const [ingredientItems, setIngredientItems] = useState<IngredientItem[]>([]);
+  const [originalScanItems, setOriginalScanItems] = useState<IngredientItem[]>(
+    [],
   );
-  const [dietaryPreference, setDietaryPreference] = useState<string>("Vegetarian");
-  const [recipe, setRecipe] = useState<Recipe | null>(initialRecipes[0]);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [dietaryPreference, setDietaryPreference] =
+    useState<string>("Vegetarian");
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [loadingMessage, setLoadingMessage] = useState<string>("Processing with Groq AI…");
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>(
+    "Processing with Groq AI…",
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Fetch saved recipes from MongoDB Atlas / API on startup
   const fetchSavedRecipes = useCallback(
-    async (filters?: { diet?: string; difficulty?: string; search?: string }) => {
+    async (filters?: {
+      diet?: string;
+      difficulty?: string;
+      search?: string;
+    }) => {
       try {
         const queryParams = new URLSearchParams();
-        if (filters?.diet && filters.diet !== "All") queryParams.append("diet", filters.diet);
+        if (filters?.diet && filters.diet !== "All")
+          queryParams.append("diet", filters.diet);
         if (filters?.difficulty && filters.difficulty !== "All")
           queryParams.append("difficulty", filters.difficulty);
         if (filters?.search && filters.search.trim())
@@ -177,7 +344,10 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
         setSavedRecipes(list);
         return list;
       } catch (err: any) {
-        console.warn("Could not fetch saved recipes from backend:", err.message);
+        console.warn(
+          "Could not fetch saved recipes from backend:",
+          err.message,
+        );
         return [];
       }
     },
@@ -192,42 +362,118 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   const analyzeImage = useCallback(
     async (file: File | Blob, _label?: string): Promise<string[]> => {
       setLoading(true);
+      setIsAnalyzing(true);
       setError(null);
       setLoadingMessage("Groq Vision is scanning ingredients & produce…");
 
-      try {
-        // Set local preview
-        if (file instanceof File || file instanceof Blob) {
-          const preview = URL.createObjectURL(file);
-          setPhotoUrl(preview);
-        }
+      // Set local preview immediately so route guards allow navigation
+      if (file instanceof File || file instanceof Blob) {
+        const preview = URL.createObjectURL(file);
+        setPhotoUrl(preview);
+      }
 
+      try {
+        const optimized = await prepareImageForVision(file);
         const formData = new FormData();
-        formData.append("image", file, (file as File).name || "scan.jpg");
+        const filename = (file as File).name || "kitchen_scan.jpg";
+        formData.append("image", optimized, filename);
 
         const response = await axios.post("/api/recipes/analyze", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        if (response.data?.ingredients && Array.isArray(response.data.ingredients)) {
-          const list = response.data.ingredients;
+        if (
+          response.data?.ingredients &&
+          Array.isArray(response.data.ingredients)
+        ) {
+          const list: string[] = response.data.ingredients;
           setIngredients(list);
+          const items = list.map((name) =>
+            inferIngredientDetails(name, "scan"),
+          );
+          setIngredientItems(items);
+          setOriginalScanItems(items);
           return list;
         }
 
-        return ingredients;
+        return [];
       } catch (err: any) {
         console.error("Image analysis failed:", err);
-        setError(err.response?.data?.error || "Vision analysis failed. Using extracted items.");
-        return ingredients;
+        setError(
+          err.response?.data?.error ||
+            "Vision analysis failed. Please try another photo or add ingredients manually.",
+        );
+        return [];
       } finally {
         setLoading(false);
+        setIsAnalyzing(false);
       }
     },
-    [ingredients],
+    [],
   );
 
-  // Generate full recipe through Groq LLaMA 3.3 70B
+  // Add ingredient manually by user
+  const addIngredientItem = useCallback(
+    (name: string): { success: boolean; message: string } => {
+      const trimmed = name.trim();
+      if (!trimmed) {
+        return { success: false, message: "Please enter an ingredient name." };
+      }
+
+      const alreadyExists = ingredientItems.some(
+        (item) => item.name.toLowerCase() === trimmed.toLowerCase(),
+      );
+      if (alreadyExists) {
+        const existing = ingredientItems.find(
+          (i) => i.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        const originDesc =
+          existing?.origin === "scan"
+            ? "detected from photo scan"
+            : "already added by you";
+        return {
+          success: false,
+          message: `"${trimmed}" is already on your list (${originDesc}).`,
+        };
+      }
+
+      const newItem = inferIngredientDetails(trimmed, "user");
+      setIngredientItems((prev) => [...prev, newItem]);
+      setIngredients((prev) => [...prev, trimmed]);
+
+      return {
+        success: true,
+        message: `"${trimmed}" added by you (manual pantry entry).`,
+      };
+    },
+    [ingredientItems],
+  );
+
+  // Remove ingredient
+  const removeIngredientItem = useCallback(
+    (id: string) => {
+      const target = ingredientItems.find((i) => i.id === id);
+      setIngredientItems((prev) => prev.filter((i) => i.id !== id));
+      if (target) {
+        setIngredients((prev) => prev.filter((name) => name !== target.name));
+      }
+    },
+    [ingredientItems],
+  );
+
+  // Reset to original detected scan items
+  const resetIngredientItems = useCallback(() => {
+    setIngredientItems(originalScanItems);
+    setIngredients(originalScanItems.map((i) => i.name));
+  }, [originalScanItems]);
+
+  // Clear all ingredients
+  const clearIngredientItems = useCallback(() => {
+    setIngredientItems([]);
+    setIngredients([]);
+  }, []);
+
+  // Generate full recipe through Groq AI
   const generateRecipe = useCallback(
     async (
       ingredientsOverride?: string[],
@@ -236,12 +482,13 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     ): Promise<Recipe> => {
       setLoading(true);
       setError(null);
-      setLoadingMessage("Groq LLaMA 3.3 70B is crafting your structured recipe…");
+      setLoadingMessage("Groq AI is crafting your structured recipe…");
 
       try {
         const payload = {
           ingredients: ingredientsOverride || ingredients,
-          dietaryPreference: dietOverride !== undefined ? dietOverride : dietaryPreference,
+          dietaryPreference:
+            dietOverride !== undefined ? dietOverride : dietaryPreference,
           recipeTitle: recipeTitle,
         };
 
@@ -252,10 +499,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
       } catch (err: any) {
         console.error("Recipe generation failed:", err);
         setError(err.response?.data?.error || "Failed to generate recipe.");
-        // Fallback to initial recipe
-        const fallback = initialRecipes[0];
-        setRecipe(fallback);
-        return fallback;
+        throw err;
       } finally {
         setLoading(false);
       }
@@ -263,7 +507,7 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     [ingredients, dietaryPreference],
   );
 
-  // Generate 3 recipe suggestion cards through Groq LLaMA 3.3
+  // Generate 3 recipe suggestion cards through Groq AI
   const getRecipeSuggestions = useCallback(
     async (
       ingredientsOverride?: string[],
@@ -276,7 +520,8 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
       try {
         const payload = {
           ingredients: ingredientsOverride || ingredients,
-          dietaryPreference: dietOverride !== undefined ? dietOverride : dietaryPreference,
+          dietaryPreference:
+            dietOverride !== undefined ? dietOverride : dietaryPreference,
         };
 
         const response = await axios.post("/api/recipes/suggestions", payload);
@@ -343,7 +588,9 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
         return saved;
       } catch (err: any) {
         console.error("Failed to save recipe:", err);
-        setError(err.response?.data?.error || "Failed to save recipe to database");
+        setError(
+          err.response?.data?.error || "Failed to save recipe to database",
+        );
         throw err;
       }
     },
@@ -354,11 +601,14 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
   const deleteSavedRecipe = useCallback(async (id: string) => {
     try {
       await axios.delete(`/api/recipes/saved/${id}`);
-      setSavedRecipes((prev) => prev.filter((r) => r._id !== id && r.id !== id));
+      setSavedRecipes((prev) =>
+        prev.filter((r) => r._id !== id && r.id !== id),
+      );
     } catch (err: any) {
       console.error("Failed to delete recipe:", err);
-      // Still update local state optimistically
-      setSavedRecipes((prev) => prev.filter((r) => r._id !== id && r.id !== id));
+      setSavedRecipes((prev) =>
+        prev.filter((r) => r._id !== id && r.id !== id),
+      );
     }
   }, []);
 
@@ -370,20 +620,27 @@ export function RecipeProvider({ children }: { children: ReactNode }) {
     <RecipeContext.Provider
       value={{
         ingredients,
+        ingredientItems,
         photoUrl,
         dietaryPreference,
         recipe,
         suggestions,
         savedRecipes,
         loading,
+        isAnalyzing,
         loadingMessage,
         error,
         setError,
         setIngredients,
+        setIngredientItems,
         setPhotoUrl,
         setDietaryPreference,
         setRecipe,
         analyzeImage,
+        addIngredientItem,
+        removeIngredientItem,
+        resetIngredientItems,
+        clearIngredientItems,
         generateRecipe,
         getRecipeSuggestions,
         saveRecipe,
