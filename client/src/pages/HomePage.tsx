@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import WorkflowStepper from "../components/home/WorkflowStepper";
 import HeroSection from "../components/home/HeroSection";
@@ -7,18 +8,21 @@ import SampleKitchenSection from "../components/home/SampleKitchenSection";
 import TipsSection from "../components/home/TipsSection";
 import ProcessingOverlay from "../components/home/ProcessingOverlay";
 import type { SampleKitchen, ScanStatus } from "../components/types";
+import { useRecipe } from "../context/RecipeContext";
 
 const scanStages = [
-  { progress: 35, message: "Calibrating kitchen illumination…" },
-  { progress: 65, message: "Segmenting raw produce and pantry staples…" },
-  { progress: 88, message: "Discarding cookware and background items…" },
+  { progress: 25, message: "Calibrating kitchen illumination & focus…" },
+  { progress: 55, message: "Segmenting raw produce and pantry staples…" },
+  { progress: 85, message: "Discarding cookware and background items…" },
   { progress: 100, message: "Ingredient identification complete!" },
 ];
 
 export default function HomePage(): JSX.Element {
+  const navigate = useNavigate();
+  const { analyzeImage, setIngredients, setPhotoUrl } = useRecipe();
+
   const [scanStatus, setScanStatus] = useState<ScanStatus | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stageIndexRef = useRef(0);
@@ -34,28 +38,33 @@ export default function HomePage(): JSX.Element {
     return () => clearScanTimers();
   }, []);
 
-  const startScan = (sourceName: string) => {
+  const startScan = async (sourceName: string, file?: File) => {
     clearScanTimers();
     stageIndexRef.current = 0;
-    setScanComplete(false);
     setScanStatus({
       sourceName,
       progress: 15,
-      message: `Ingesting ${sourceName}…`,
+      message: `Ingesting ${sourceName} into Groq Vision…`,
     });
     setIsScanning(true);
 
-    timerRef.current = setInterval(() => {
+    // If actual file is provided, trigger the AI backend analyze call
+    let analysisPromise: Promise<string[]> | null = null;
+    if (file) {
+      analysisPromise = analyzeImage(file, sourceName);
+    }
+
+    timerRef.current = setInterval(async () => {
       const stage = scanStages[stageIndexRef.current];
       if (!stage) {
         clearScanTimers();
+        if (analysisPromise) {
+          await analysisPromise.catch(() => {});
+        }
         completionRef.current = setTimeout(() => {
           setIsScanning(false);
-          setScanComplete(true);
-          window.alert(
-            "Vision scan complete! 7 ingredients identified. Ready for Step 2: Review Ingredients.",
-          );
-        }, 500);
+          navigate("/review");
+        }, 400);
         return;
       }
 
@@ -69,25 +78,37 @@ export default function HomePage(): JSX.Element {
       if (stageIndexRef.current === scanStages.length) {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
+        if (analysisPromise) {
+          await analysisPromise.catch(() => {});
+        }
         completionRef.current = setTimeout(() => {
           setIsScanning(false);
-          setScanComplete(true);
-          window.alert(
-            "Vision scan complete! 7 ingredients identified. Ready for Step 2: Review Ingredients.",
-          );
-        }, 500);
+          navigate("/review");
+        }, 400);
       }
-    }, 500);
+    }, 450);
   };
 
   const cancelScan = () => {
     clearScanTimers();
     setIsScanning(false);
     setScanStatus(null);
-    setScanComplete(false);
   };
 
   const handleSampleSelect = (sample: SampleKitchen) => {
+    // Parse sample ingredients
+    const sampleItems = sample.description
+      .split(/[,.]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 2);
+
+    if (sampleItems.length > 0) {
+      setIngredients(sampleItems);
+    }
+    if (sample.image) {
+      setPhotoUrl(sample.image);
+    }
+
     startScan(sample.scanLabel);
   };
 
@@ -100,14 +121,6 @@ export default function HomePage(): JSX.Element {
         <UploadDropzone onScan={startScan} />
         <SampleKitchenSection onSelectSample={handleSampleSelect} />
         <TipsSection />
-        {scanComplete && (
-          <p
-            role="status"
-            className="mt-6 rounded-xl border border-[#CFE3D1] bg-[#EAF5EE] p-4 text-sm font-medium text-[#285C36]"
-          >
-            Demo scan complete. The next step would be ingredient review.
-          </p>
-        )}
       </main>
       <ProcessingOverlay
         isOpen={isScanning}

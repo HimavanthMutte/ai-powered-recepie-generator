@@ -1,10 +1,10 @@
 import { useRef, useState, type ChangeEvent, type DragEvent, type JSX } from "react";
 
 type UploadDropzoneProps = {
-  onScan: (sourceName: string) => void;
+  onScan: (sourceName: string, file?: File) => void;
 };
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
 export default function UploadDropzone({ onScan }: UploadDropzoneProps): JSX.Element {
@@ -23,7 +23,7 @@ export default function UploadDropzone({ onScan }: UploadDropzoneProps): JSX.Ele
       return;
     }
     setError("");
-    onScan(file.name);
+    onScan(file.name, file);
   };
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
